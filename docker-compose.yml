@@ -39,12 +39,28 @@ services:
       ]
     volumes:
       - my-datavolume:/var/lib/mysql:rw
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 512m
+        reservations:
+          cpus: 0.25
+          memory: 256m
   redis:
     image: redis:7
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/var/lib/redis:rw
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 512m
+        reservations:
+          cpus: 0.25
+          memory: 256m
   es:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
     ports:
@@ -56,15 +72,31 @@ services:
     environment:
       - transport.host=localhost
       - bootstrap.memory_lock=false
-      - "ES_JAVA_OPTS=-Xms1500m -Xmx1500m"
+      - "ES_JAVA_OPTS=-Xms100m -Xmx500m"
       - discovery.type=single-node
       # Silence "security features are not enabled" warnings
       # https://github.com/elastic/elasticsearch/issues/78500
       - xpack.security.enabled=false
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 1g
+        reservations:
+          cpus: 0.75
+          memory: 512m
   mc:
     image: memcached:1.5
     ports:
       - "11211:11211"
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 512m
+        reservations:
+          cpus: 0.25
+          memory: 256m
   web:
     profiles:
       - dev
@@ -78,7 +110,8 @@ services:
       CODESPACES: ${CODESPACES:-}
       CODESPACE_NAME: ${CODESPACE_NAME:-}
       GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN: ${GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN:-}
-    command: bash -c "rm -f tmp/pids/server.pid && bundle exec rails s -p 3000 -b '0.0.0.0'"
+      BUNDLE_GIT__ALLOW__HARDLINKS: false
+    command: bash -c "rm -f tmp/pids/server.pid && bundle install && bin/rails db:migrate && bundle exec rails s -p 3000 -b '0.0.0.0'"
     volumes:
       - .:/otwa
     ports:
@@ -92,6 +125,14 @@ services:
     # Make `docker compose attach web` work for debugging
     stdin_open: true
     tty: true
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 1g
+        reservations:
+          cpus: 0.5
+          memory: 512m
   resque:
     profiles:
       - dev
@@ -107,12 +148,28 @@ services:
     depends_on:
       - db
       - redis
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 512m
+        reservations:
+          cpus: 0.25
+          memory: 256m
   chrome:
     profiles:
       - test
     image: selenium/standalone-chromium
     ports:
       - "4444:4444"
+    deploy:
+      resources:
+        limits:
+          cpus: 0.5
+          memory: 512m
+        reservations:
+          cpus: 0.25
+          memory: 256m
   test:
     profiles:
       - test
@@ -138,3 +195,11 @@ services:
       - es
       - mc
       - chrome
+    deploy:
+      resources:
+        limits:
+          cpus: 1
+          memory: 1g
+        reservations:
+          cpus: 0.5
+          memory: 512m
